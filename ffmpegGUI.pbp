@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project xmlns="http://www.purebasic.com/namespace" version="1.0" creator="PureBasic 5.11 (Windows - x64)">
+  <section name="config">
+    <options closefiles="1" openmode="0" name="ffmpegGUI"/>
+  </section>
+  <section name="data">
+    <explorer view="..\..\Documents\" pattern="0"/>
+    <log show="1"/>
+    <lastopen date="2014-07-11 23:19" user="Alexander" host="ALEXANDER-TOWER"/>
+  </section>
+  <section name="files">
+    <file name="source\main.pb">
+      <config load="1" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
+      <fingerprint md5="40866dfd5e8251d50d200e1b34f49932"/>
+    </file>
+    <file name="source\WindowMain.pbf">
+      <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
+      <fingerprint md5="036a5fd35aacf27f53fd439971f5cf12"/>
+    </file>
+  </section>
+  <section name="targets">
+    <target name="Default Target" enabled="1" default="1">
+      <inputfile value="source\main.pb"/>
+      <outputfile value="bin\ffmpegGUI.exe"/>
+      <options thread="1" xpskin="1" user="1" debug="1"/>
+      <compilecount enable="1" value="19"/>
+      <buildcount enable="1" value="0"/>
+      <execonstant enable="1"/>
+    </target>
+  </section>
+</project>

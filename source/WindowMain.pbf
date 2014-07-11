@@ -1,0 +1,79 @@
+; Form Designer for Purebasic - 5.11
+; Warning: this file uses a strict syntax, if you edit it, make sure to respect the Form Designer limitation or it won't be opened again.
+
+Global WindowMain
+
+Global GadgetQueue, ButtonStartStop, ButtonNew, ButtonDelete, ButtonEdit, ButtonUp, ButtonDown
+
+Declare ResizeGadgetsWindowMain()
+
+Declare GadgetQueue(EventType)
+Declare ButtonStartStop(EventType)
+Declare ButtonNew(EventType)
+Declare ButtonDelete(EventType)
+Declare ButtonEdit(EventType)
+Declare ButtonUp(EventType)
+Declare ButtonDown(EventType)
+
+Procedure OpenWindowMain()
+  WindowMain = OpenWindow(#PB_Any, 0, 0, 800, 500, "ffmpegGUI", #PB_Window_SystemMenu | #PB_Window_MinimizeGadget | #PB_Window_MaximizeGadget | #PB_Window_SizeGadget | #PB_Window_Invisible | #PB_Window_ScreenCentered)
+  GadgetQueue = ListIconGadget(#PB_Any, 10, 10, 720, 480, "Filename", 200, #PB_ListIcon_CheckBoxes | #PB_ListIcon_MultiSelect | #PB_ListIcon_GridLines | #PB_ListIcon_FullRowSelect | #PB_ListIcon_HeaderDragDrop | #PB_ListIcon_AlwaysShowSelection)
+  ButtonStartStop = ButtonImageGadget(#PB_Any, 740, 30, 50, 50, 0)
+  GadgetToolTip(ButtonStartStop, "Start/stop queue")
+  ButtonNew = ButtonImageGadget(#PB_Any, 740, 90, 50, 50, 0)
+  GadgetToolTip(ButtonNew, "Add a new job")
+  ButtonDelete = ButtonImageGadget(#PB_Any, 740, 150, 50, 50, 0)
+  GadgetToolTip(ButtonDelete, "Delete selected job")
+  ButtonEdit = ButtonImageGadget(#PB_Any, 740, 210, 50, 50, 0)
+  GadgetToolTip(ButtonEdit, "Edit selected job")
+  ButtonUp = ButtonImageGadget(#PB_Any, 740, 270, 50, 25, 0)
+  GadgetToolTip(ButtonUp, "Move selected job up in queue")
+  ButtonDown = ButtonImageGadget(#PB_Any, 740, 300, 50, 25, 0)
+  GadgetToolTip(ButtonDown, "Move selected job down in queue")
+EndProcedure
+
+Procedure ResizeGadgetsWindowMain()
+  Protected WindowWidth, WindowHeight
+  WindowWidth = WindowWidth(WindowMain)
+  WindowHeight = WindowHeight(WindowMain)
+  ResizeGadget(GadgetQueue, 10, 10, WindowWidth - 80, WindowHeight - 20)
+  ResizeGadget(ButtonStartStop, WindowWidth - 60, 30, 50, 50)
+  ResizeGadget(ButtonNew, WindowWidth - 60, 90, 50, 50)
+  ResizeGadget(ButtonDelete, WindowWidth - 60, 150, 50, 50)
+  ResizeGadget(ButtonEdit, WindowWidth - 60, 210, 50, 50)
+  ResizeGadget(ButtonUp, WindowWidth - 60, 270, 50, 25)
+  ResizeGadget(ButtonDown, WindowWidth - 60, 300, 50, 25)
+EndProcedure
+
+Procedure WindowMain_Events(event)
+  Select event
+    Case #PB_Event_SizeWindow
+      ResizeGadgetsWindowMain()
+    Case #PB_Event_CloseWindow
+      ProcedureReturn #False
+
+    Case #PB_Event_Menu
+      Select EventMenu()
+      EndSelect
+
+    Case #PB_Event_Gadget
+      Select EventGadget()
+        Case GadgetQueue
+          GadgetQueue(EventType())          
+        Case ButtonStartStop
+          ButtonStartStop(EventType())          
+        Case ButtonNew
+          ButtonNew(EventType())          
+        Case ButtonDelete
+          ButtonDelete(EventType())          
+        Case ButtonEdit
+          ButtonEdit(EventType())          
+        Case ButtonUp
+          ButtonUp(EventType())          
+        Case ButtonDown
+          ButtonDown(EventType())          
+      EndSelect
+  EndSelect
+  ProcedureReturn #True
+EndProcedure
+

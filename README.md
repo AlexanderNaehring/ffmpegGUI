@@ -7,7 +7,7 @@ __________
 __Main Ideas__
 - Queue management
 - Percentage & remaining time estimation
-- Transcoding vai drag&drop
+- Transcoding via drag&drop
 
 ________
 __Codecs__

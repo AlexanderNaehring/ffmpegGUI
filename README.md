@@ -3,8 +3,14 @@ ffmpegGUI
 
 a very tiny ffmpeg GUI for transcoding movies into x264/vorbis mkv files
 
+__________
+Main Ideas
+- Queue management
+- Percentage & remaining time estimation
+- Transcoding vai drag&drop
+
 ________
-Features
+Codecs
 - input: all files ffmpeg can read
 - output: preset output formats
   - video codec: x264
@@ -12,11 +18,5 @@ Features
   - subs: copy
   - chapter: copy
   - file container: mkv
-
-__________
-Main Ideas
-- Queue management
-- Percentage & remaining time estimation
-- Transcoding vai drag&drop
 
 __________

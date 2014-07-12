@@ -12,9 +12,11 @@ Features
   - subs: copy
   - chapter: copy
   - file container: mkv
+  - 
 __________
 Main Ideas
 - Queue management
 - Percentage & remaining time estimation
 - Transcoding vai drag&drop
+
 __________

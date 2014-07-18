@@ -26,14 +26,30 @@ Structure job
   durationCurrent$
   durationSecondsTotal.i  ; duration calculated as seconds
   durationSecondsCurrent.i
+  percent.i
 EndStructure
 
-Global CurrentJobAbort  ; global variable, set to true if transcoding should be canceled
-Global CurrentJobID     ; stores jobID of currently transcoding job
-Global CurrentJobFFMPEG ; stores program ID of ffmpeg
-Global *CurrentJob.job  ; pointer to current job in list()
-Global NewList  jobs.job()  ; list of all jobs
+Global Queue.b                ; #True if next job should be startet, #False if next job should NOT be startet
+Global CurrentJobAbort.b      ; global variable for thread, set to #True if transcoding should be aborted
+Global CurrentJobFFMPEG       ; stores program ID of ffmpeg
+Global *CurrentJob.job        ; pointer to current job in list()
+Global NewList  jobs.job()   ; list of all jobs
 Global mutexJobs = CreateMutex()
+
+
+Declare startNextJob()
+
+Procedure explodeStringArray(Array a$(1), s$, delimeter$)
+  Protected count, i
+  count = CountString(s$,delimeter$) + 1
+  
+  Debug Str(count) + " substrings found"
+  ReDim a$(count)
+  For i = 1 To count
+    a$(i - 1) = StringField(s$,i,delimeter$)
+  Next
+  ProcedureReturn count ;return count of substrings
+EndProcedure
 
 Procedure init()
   ; search for ffmpeg binary
@@ -42,7 +58,6 @@ Procedure init()
   Debug dirP$
   Debug dirC$
 EndProcedure
-
 
 Procedure exit()
   HideWindow(WindowMain, #True)
@@ -101,12 +116,25 @@ Procedure ffmpeg(*job.job)
     ProcedureReturn
   EndIf
   
+  
   Protected totalTime
   Protected out$
+  
+  *CurrentJob\startTime = Date()
+  *job\durationTotal$ = "00:00:00"
+  *job\durationCurrent$ = "00:00:00"
+  *job\percent = 0
+  
   Repeat
     Delay(1)
-    If Not IsProgram(prog) Or CurrentJobAbort
-      Break ; either ffmpeg exited or job should be canceled
+    If Not IsProgram(prog)
+      Break
+    EndIf
+    If Not ProgramRunning(prog)
+      Break
+    EndIf
+    If CurrentJobAbort
+      Break
     EndIf
     
     out$ = ReadProgramError(prog)
@@ -126,6 +154,14 @@ Procedure ffmpeg(*job.job)
 ;         Debug Str(100*getSeconds(out$)/totalTime) + " %"
         *job\durationCurrent$ = out$
         *job\durationSecondsCurrent= getSeconds(out$)
+        
+        If *CurrentJob\durationSecondsTotal > 0
+          Protected percent = 100 * *job\durationSecondsCurrent / *job\durationSecondsTotal
+          If percent <> *job\percent
+            Debug *job\durationCurrent$ + " / " + *job\durationTotal$ + " - " + Str(percent) + "%"
+          EndIf
+          *job\percent = percent
+        EndIf
       EndIf
       
     EndIf
@@ -137,10 +173,26 @@ Procedure ffmpeg(*job.job)
     EndIf
   ForEver
   If IsProgram(prog)  ; if ffmpeg is still running
-    Debug "kill ffmpeg"
-    KillProgram(prog)
+    If ProgramRunning(prog)
+      Debug "kill ffmpeg"
+      KillProgram(prog)
+    EndIf 
   EndIf
+  ; Close read connection with ffmpeg
   CloseProgram(prog)
+  
+  ; save finish date
+  *job\endTime = Date()
+  If *job\durationSecondsCurrent = *job\durationSecondsTotal
+    *job\done = #True
+  EndIf
+  
+  ; wait a moment for updating the transcoding window
+  Delay(2 * #GUI_UPDATE)
+  ; no current job
+  *CurrentJob = 0
+  HideWindow(WindowTranscode, #True)
+  Debug "ffmpeg thread finished"
   
 EndProcedure
 
@@ -149,8 +201,32 @@ Procedure GadgetQueue(EventType)
   
 EndProcedure
 
+Procedure FileDrop()
+  Protected files$, i
+  Protected Dim files$(0)
+  files$ = EventDropFiles()
+  
+  If files$
+    explodeStringArray(files$(), files$, Chr(10))
+    For i = 0 To ArraySize(files$())-1
+      Debug "- "+files$(i)
+    Next
+    
+  EndIf
+  
+EndProcedure
+
+
 Procedure ButtonStartStop(EventType)
   addLog("start/stop queue")
+  
+  If Queue
+    Queue = #False
+  Else
+    Queue = #True 
+    startNextJob()
+  EndIf
+  
 EndProcedure
 
 Procedure ButtonNew(EventType)
@@ -175,18 +251,26 @@ EndProcedure
 
 Procedure updateGadgets()
   Static lastUpdate = 0
+  Protected elapsedTime, totalTime, remainingTime
   
   If lastUpdate < ElapsedMilliseconds() - #GUI_UPDATE
     lastUpdate = ElapsedMilliseconds()
     
     If *CurrentJob
+      elapsedTime = Date() - *CurrentJob\startTime
+      If *CurrentJob\percent
+        totalTime = elapsedTime * 100 / *CurrentJob\percent
+        remainingTime = totalTime - elapsedTime
+      Else
+        totalTime = 0
+        remainingTime = 0
+      EndIf
+
       SetGadgetText(StringPosition, *CurrentJob\durationCurrent$+" / "+*CurrentJob\durationTotal$)
       SetGadgetText(StringFrames, "0 / 0")
-      SetGadgetText(StringTimeElapsed, "00:00:00")
-      SetGadgetText(StringTimeRemaining, "00:00:00")
-      If *CurrentJob\durationSecondsTotal        
-        SetGadgetState(ProgressBarVideo, 100 * *CurrentJob\durationSecondsCurrent / *CurrentJob\durationSecondsTotal)
-      EndIf
+      SetGadgetText(StringTimeElapsed, FormatDate("%hh:%ii:%ss", elapsedTime))
+      SetGadgetText(StringTimeRemaining, FormatDate("%hh:%ii:%ss", remainingTime))
+      SetGadgetState(ProgressBarVideo, *CurrentJob\percent)
     EndIf
     
   EndIf
@@ -213,20 +297,17 @@ Procedure startNextJob()
   Next
   UnlockMutex(mutexJobs)
   
-  *CurrentJob\startTime = Date()
-  
   SetGadgetText(StringInput, *CurrentJob\file\source$)
   SetGadgetText(StringOutput, *CurrentJob\file\destination$)
   SetGadgetText(StringPosition, "00:00:00 / 00:00:00")
   SetGadgetText(StringFrames, "0 / 0")
   SetGadgetText(StringTimeElapsed, "00:00:00")
   SetGadgetText(StringTimeRemaining, "00:00:00")
-  
   SetGadgetState(ProgressBarVideo, 0)
   
   HideWindow(WindowTranscode, #False)
   
-  CreateThread(@ffmpeg(),*CurrentJob)
+  CreateThread(@ffmpeg(), *CurrentJob)
   
 EndProcedure
 
@@ -235,6 +316,7 @@ init()
 
 OpenWindowMain()
 OpenWindowTranscode()
+EnableGadgetDrop(GadgetQueue, #PB_Drop_Files, #PB_Drag_Copy|#PB_Drag_Move|#PB_Drag_Link)
 
 HideWindow(WindowMain, #False)
 
@@ -249,7 +331,7 @@ EndWith
 UnlockMutex(mutexJobs)
 
 DeleteFile("C:\Users\Alexander\Desktop\out.mkv")
-startNextJob()
+;startNextJob()
 ;}
 
 
@@ -262,6 +344,9 @@ Repeat
       If Not WindowMain_Events(Event)
         exit()
       EndIf
+      If Event = #PB_Event_GadgetDrop Or Event = #PB_Event_WindowDrop
+        FileDrop()
+      EndIf
     Case WindowTranscode
       If Not WindowTranscode_Events(Event)
         
@@ -271,7 +356,7 @@ Repeat
 ForEver
 End
 ; IDE Options = PureBasic 5.11 (Windows - x64)
-; CursorPosition = 124
-; FirstLine = 75
-; Folding = 8--
+; CursorPosition = 193
+; FirstLine = 150
+; Folding = xH9
 ; EnableXP

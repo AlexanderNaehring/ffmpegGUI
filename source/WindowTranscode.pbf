@@ -7,8 +7,7 @@ Global StringInput, Gadget, Gadget, StringOutput, Text_1_Copy1_Copy1, StringPosi
 
 
 Procedure OpenWindowTranscode()
-  WindowTranscode = OpenWindow(#PB_Any, 0, 0, 375, 220, "Transcoding video", #PB_Window_SystemMenu | #PB_Window_MinimizeGadget | #PB_Window_ScreenCentered)
-  HideWindow(WindowTranscode, 1)
+  WindowTranscode = OpenWindow(#PB_Any, 0, 0, 375, 220, "Transcoding video", #PB_Window_SystemMenu | #PB_Window_MinimizeGadget | #PB_Window_Invisible | #PB_Window_ScreenCentered)
   StringInput = StringGadget(#PB_Any, 70, 30, 290, 20, "C:\", #PB_String_ReadOnly)
   Gadget = TextGadget(#PB_Any, 15, 30, 50, 20, "Input:")
   Gadget = TextGadget(#PB_Any, 15, 60, 50, 20, "Output:")

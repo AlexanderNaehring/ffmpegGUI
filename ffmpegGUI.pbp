@@ -7,29 +7,34 @@
   <section name="data">
     <explorer view="..\..\Documents\" pattern="0"/>
     <log show="1"/>
-    <lastopen date="2014-07-17 18:47" user="Alexander" host="ALEXANDER-TOWER"/>
+    <lastopen date="2014-07-23 20:37" user="Alexander" host="ALEXANDER-TOWER"/>
   </section>
   <section name="files">
     <file name="source\main.pb">
       <config load="1" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="961e39b4141add4b76725b058f31d7e4"/>
+      <fingerprint md5="e0eb1c11dce9f56ab10e5322e8872140"/>
     </file>
     <file name="source\WindowMain.pbf">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="84de83003ef36191a51ea8bc7acc0576"/>
+      <fingerprint md5="2b76694775aba6d2f419018fb5181461"/>
     </file>
     <file name="source\WindowTranscode.pbf">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="ba412398febcc20ac2d6807c6a77ba1a"/>
+      <fingerprint md5="7761b1b008e26d3b5331aebab3e256b7"/>
+    </file>
+    <file name="source\data.pbi">
+      <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
+      <fingerprint md5="6d8306ba77bd02c6e25b48492cb32298"/>
     </file>
   </section>
   <section name="targets">
     <target name="win64" enabled="1" default="1">
       <inputfile value="source\main.pb"/>
       <outputfile value="bin\win64\ffmpegGUI.exe"/>
+      <executable value="bin\win64\ffmpegGUI.exe"/>
       <options thread="1" xpskin="1" user="1" debug="1"/>
-      <compilecount enable="1" value="101"/>
-      <buildcount enable="1" value="0"/>
+      <compilecount enable="1" value="157"/>
+      <buildcount enable="1" value="3"/>
       <execonstant enable="1"/>
     </target>
   </section>

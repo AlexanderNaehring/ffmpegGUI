@@ -17,7 +17,7 @@ Declare ButtonDown(EventType)
 
 Procedure OpenWindowMain()
   WindowMain = OpenWindow(#PB_Any, 0, 0, 800, 500, "ffmpegGUI", #PB_Window_SystemMenu | #PB_Window_MinimizeGadget | #PB_Window_MaximizeGadget | #PB_Window_SizeGadget | #PB_Window_Invisible | #PB_Window_ScreenCentered)
-  GadgetQueue = ListIconGadget(#PB_Any, 10, 10, 720, 480, "Filename", 200, #PB_ListIcon_CheckBoxes | #PB_ListIcon_MultiSelect | #PB_ListIcon_GridLines | #PB_ListIcon_FullRowSelect | #PB_ListIcon_HeaderDragDrop | #PB_ListIcon_AlwaysShowSelection)
+  GadgetQueue = ListIconGadget(#PB_Any, 10, 10, 720, 480, "Filename", 200, #PB_ListIcon_MultiSelect | #PB_ListIcon_GridLines | #PB_ListIcon_FullRowSelect | #PB_ListIcon_HeaderDragDrop | #PB_ListIcon_AlwaysShowSelection)
   ButtonStartStop = ButtonImageGadget(#PB_Any, 740, 30, 50, 50, 0)
   GadgetToolTip(ButtonStartStop, "Start/stop queue")
   ButtonNew = ButtonImageGadget(#PB_Any, 740, 90, 50, 50, 0)

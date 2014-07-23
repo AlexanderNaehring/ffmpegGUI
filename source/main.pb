@@ -36,6 +36,7 @@ Global *CurrentJob.job        ; pointer to current job in list()
 Global NewList  jobs.job()   ; list of all jobs
 Global mutexJobs = CreateMutex()
 
+Global ImageStart, ImageStop, ImageNew, ImageDelete, ImageEdit, ImageUp, ImageDown
 
 Declare startNextJob()
 
@@ -196,6 +197,45 @@ Procedure ffmpeg(*job.job)
   
 EndProcedure
 
+Procedure SizeCallback(WindowID, Message, wParam, lParam)
+  Protected *SizeTracking.MINMAXINFO
+  ; Here is the trick. The GETMINMAXINFO must be processed
+  ; and filled with min/max values...
+  If Message = #WM_GETMINMAXINFO
+    *SizeTracking = lParam
+    *SizeTracking\ptMinTrackSize\x = 640
+    *SizeTracking\ptMinTrackSize\y = 480
+    *SizeTracking\ptMaxTrackSize\x = 999999;7680
+    *SizeTracking\ptMaxTrackSize\y = 4320
+  EndIf
+  
+  ProcedureReturn #PB_ProcessPureBasicEvents
+EndProcedure
+
+Procedure SetGadgetImage(Gadget, Image)
+  ResizeImage(Image, GadgetWidth(Gadget)-10, GadgetHeight(Gadget)-10)
+  SetGadgetAttribute(Gadget, #PB_Button_Image, ImageID(Image))
+EndProcedure
+
+Procedure loadWindowMainImages()
+  UsePNGImageDecoder()
+  
+  ImageStart  = CatchImage(#PB_Any, ?DataImageStart)
+  ImageStop   = CatchImage(#PB_Any, ?DataImageStop)
+  ImageNew    = CatchImage(#PB_Any, ?DataImageNew)
+  ImageDelete = CatchImage(#PB_Any, ?DataImageDelete)
+  ImageEdit   = CatchImage(#PB_Any, ?DataImageEdit)
+  ImageUp     = CatchImage(#PB_Any, ?DataImageUp)
+  ImageDown   = CatchImage(#PB_Any, ?DataImageDown)
+  
+  SetGadgetImage(ButtonStartStop, ImageStart)
+  SetGadgetImage(ButtonNew, ImageNew)
+  SetGadgetImage(ButtonDelete, ImageDelete)
+  SetGadgetImage(ButtonEdit, ImageEdit)
+  SetGadgetImage(ButtonUp, ImageUp)
+  SetGadgetImage(ButtonDown, ImageDown)
+  
+EndProcedure
 
 Procedure GadgetQueue(EventType)
   
@@ -216,15 +256,13 @@ Procedure FileDrop()
   
 EndProcedure
 
-
 Procedure ButtonStartStop(EventType)
-  addLog("start/stop queue")
-  
   If Queue
+    Debug "stop queue"
     Queue = #False
   Else
+    Debug "start queue"
     Queue = #True 
-    startNextJob()
   EndIf
   
 EndProcedure
@@ -251,7 +289,8 @@ EndProcedure
 
 Procedure updateGadgets()
   Static lastUpdate = 0
-  Protected elapsedTime, totalTime, remainingTime
+  Protected elapsedTime, totalTime, remainingTime  
+  Static lastQueue
   
   If lastUpdate < ElapsedMilliseconds() - #GUI_UPDATE
     lastUpdate = ElapsedMilliseconds()
@@ -273,12 +312,26 @@ Procedure updateGadgets()
       SetGadgetState(ProgressBarVideo, *CurrentJob\percent)
     EndIf
     
+    If Queue <> lastQueue
+      lastQueue = Queue
+      If Queue 
+        SetGadgetImage(ButtonStartStop, ImageStop)
+      Else
+        SetGadgetImage(ButtonStartStop, ImageStart)
+      EndIf
+    EndIf
+    
+    If Queue And Not *CurrentJob ; if queue is running but no current job is active
+      If Not startNextJob()
+        ; no more undone jobs available or some other error
+        Queue = #False
+      EndIf
+    EndIf
+    
   EndIf
 EndProcedure
 
 Procedure startNextJob()
-  
-  
   ; lock mutex before testing for *CurrentJob and release after setting it!
   LockMutex(mutexJobs)
   If *CurrentJob
@@ -297,6 +350,11 @@ Procedure startNextJob()
   Next
   UnlockMutex(mutexJobs)
   
+  If Not *CurrentJob ; no next job found
+    ProcedureReturn #False
+  EndIf
+  
+  ; "reset" Transcoding window before showing
   SetGadgetText(StringInput, *CurrentJob\file\source$)
   SetGadgetText(StringOutput, *CurrentJob\file\destination$)
   SetGadgetText(StringPosition, "00:00:00 / 00:00:00")
@@ -309,13 +367,38 @@ Procedure startNextJob()
   
   CreateThread(@ffmpeg(), *CurrentJob)
   
+  ProcedureReturn #True
 EndProcedure
 
+Procedure updateQueueGadget()
+  LockMutex(mutexJobs)
+  ClearGadgetItems(GadgetQueue)
+  ForEach jobs()
+    AddGadgetItem(GadgetQueue, -1, GetFilePart(jobs()\file\source$))
+  Next
+  UnlockMutex(mutexJobs)
+EndProcedure
+
+Procedure addJob(source$)
+  LockMutex(mutexJobs)
+  LastElement(jobs())
+  AddElement(jobs())
+  With jobs()
+    \file\source$       = source$
+    \file\destination$  = source$+".mkv"
+  EndWith
+  UnlockMutex(mutexJobs)
+  updateQueueGadget()
+EndProcedure
 
 init()
 
 OpenWindowMain()
 OpenWindowTranscode()
+
+SetWindowCallback(@SizeCallback(), WindowMain)
+loadWindowMainImages()
+
 EnableGadgetDrop(GadgetQueue, #PB_Drop_Files, #PB_Drag_Copy|#PB_Drag_Move|#PB_Drag_Link)
 
 HideWindow(WindowMain, #False)
@@ -323,17 +406,10 @@ HideWindow(WindowMain, #False)
 ;{ --------- TEST
 LockMutex(mutexJobs)
 ResetList(jobs())
-AddElement(jobs())
-With jobs()
-  \file\source$       = "C:\Users\Alexander\Desktop\test.mp4"
-  \file\destination$  = "C:\Users\Alexander\Desktop\out.mkv"
-EndWith
 UnlockMutex(mutexJobs)
-
-DeleteFile("C:\Users\Alexander\Desktop\out.mkv")
-;startNextJob()
+addJob("C:\Users\Alexander\Desktop\test.mp4")
+DeleteFile("C:\Users\Alexander\Desktop\test.mp4.mkv")
 ;}
-
 
 Repeat
   updateGadgets()
@@ -349,14 +425,17 @@ Repeat
       EndIf
     Case WindowTranscode
       If Not WindowTranscode_Events(Event)
-        
+        If MessageRequester("Abort", "Do you really want to cancel transcoding?", #PB_MessageRequester_YesNo) = #PB_MessageRequester_Yes
+          CurrentJobAbort = #True
+        EndIf
       EndIf
   EndSelect
-  
 ForEver
 End
+
+XIncludeFile "data.pbi"
 ; IDE Options = PureBasic 5.11 (Windows - x64)
-; CursorPosition = 193
-; FirstLine = 150
-; Folding = xH9
+; CursorPosition = 318
+; FirstLine = 86
+; Folding = Agg8
 ; EnableXP

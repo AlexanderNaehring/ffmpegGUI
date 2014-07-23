@@ -3,6 +3,9 @@
 XIncludeFile "WindowMain.pbf"
 XIncludeFile "WindowTranscode.pbf"
 
+#DEBUGGUI = #True
+#DEBUGFFMPEG = #False
+
 #GUI_UPDATE = 100
 
 Global Event
@@ -36,9 +39,13 @@ Global *CurrentJob.job        ; pointer to current job in list()
 Global NewList  jobs.job()   ; list of all jobs
 Global mutexJobs = CreateMutex()
 
+Global FileLogGUI, FileLogFFMPEG
+
 Global ImageStart, ImageStop, ImageNew, ImageDelete, ImageEdit, ImageUp, ImageDown
 
 Declare startNextJob()
+Declare SizeCallback(WindowID, Message, wParam, lParam)
+Declare loadWindowMainImages()
 
 Procedure explodeStringArray(Array a$(1), s$, delimeter$)
   Protected count, i
@@ -53,27 +60,50 @@ Procedure explodeStringArray(Array a$(1), s$, delimeter$)
 EndProcedure
 
 Procedure init()
-  ; search for ffmpeg binary
   dirP$ = ProgramFilename()
   dirC$ = GetCurrentDirectory()
-  Debug dirP$
-  Debug dirC$
+  
+  FileLogFFMPEG = CreateFile(#PB_Any, "ffmpeg.log")
+  FileLogGUI = CreateFile(#PB_Any, "gui.log")
+  
+  OpenWindowMain()
+  OpenWindowTranscode()
+  
+  SetWindowCallback(@SizeCallback(), WindowMain)
+  loadWindowMainImages()
+  
+  EnableGadgetDrop(GadgetQueue, #PB_Drop_Files, #PB_Drag_Copy|#PB_Drag_Move|#PB_Drag_Link)
+  
+  HideWindow(WindowMain, #False)
 EndProcedure
 
 Procedure exit()
   HideWindow(WindowMain, #True)
+  CloseFile(FileLogFFMPEG)
+  CloseFile(FileLogGUI)
   End
 EndProcedure
 
-Procedure addLog(logEntry$)
-  Debug logEntry$
-;   Protected text$
-;   logEntry$ = logEntry$ + Chr(10)
-;   logEntry$ = FormatDate("%hh:%ii:%ss - ",Date()) + logEntry$
-;   
-;   text$ = GetGadgetText(GadgetEditorLog)
-;   text$ = logEntry$ + text$
-;   SetGadgetText(GadgetEditorLog, text$)
+Procedure LogGUI(logEntry$)
+  CompilerIf #DEBUGGUI
+    Debug "GUI: "+logEntry$
+  CompilerEndIf
+  
+  If IsFile(FileLogGUI)
+    logEntry$ = FormatDate("%hh:%ii:%ss - ",Date()) + logEntry$
+    WriteStringN(FileLogGUI, logEntry$)
+  EndIf
+EndProcedure
+
+Procedure LogFFMPEG(logEntry$)
+  CompilerIf #DEBUGFFMPEG
+    Debug "FFMPEG: "+logEntry$
+  CompilerEndIf
+  
+  If IsFile(FileLogFFMPEG)
+    logEntry$ = FormatDate("%hh:%ii:%ss - ",Date()) + logEntry$
+    WriteStringN(FileLogFFMPEG, logEntry$)
+  EndIf
 EndProcedure
 
 Procedure getSeconds(time$)
@@ -113,7 +143,7 @@ Procedure ffmpeg(*job.job)
   Debug c$
   prog = RunProgram(dirC$+"ffmpeg", c$, "./", #PB_Program_Open|#PB_Program_Read|#PB_Program_Error|#PB_Program_Write|#PB_Program_Hide)
   If Not prog
-    Debug "Could not start '"+dirC$+"ffmpeg'"
+    LogGUI("Could not start '"+dirC$+"ffmpeg'")
     ProcedureReturn
   EndIf
   
@@ -135,12 +165,13 @@ Procedure ffmpeg(*job.job)
       Break
     EndIf
     If CurrentJobAbort
+      CurrentJobAbort = #False
       Break
     EndIf
     
     out$ = ReadProgramError(prog)
     If out$
-      Debug out$
+      LogFFMPEG(out$)
       
       If FindString(out$, "Duration:") ; found total duration of clip
         out$ = RemoveString(out$, "Duration:")
@@ -152,14 +183,13 @@ Procedure ffmpeg(*job.job)
       If FindString(out$, "frame=")
         out$ = Mid(out$, FindString(out$, "time=") + 5)
         out$ = Left(out$, FindString(out$, ".")-1)
-;         Debug Str(100*getSeconds(out$)/totalTime) + " %"
         *job\durationCurrent$ = out$
         *job\durationSecondsCurrent= getSeconds(out$)
         
         If *CurrentJob\durationSecondsTotal > 0
           Protected percent = 100 * *job\durationSecondsCurrent / *job\durationSecondsTotal
           If percent <> *job\percent
-            Debug *job\durationCurrent$ + " / " + *job\durationTotal$ + " - " + Str(percent) + "%"
+            LogGUI(*job\durationCurrent$ + " / " + *job\durationTotal$ + " - " + Str(percent) + "%")
           EndIf
           *job\percent = percent
         EndIf
@@ -169,13 +199,13 @@ Procedure ffmpeg(*job.job)
     If AvailableProgramOutput(prog)
       out$ = ReadProgramString(prog)
       If out$
-        Debug out$
+        LogFFMPEG(out$)
       EndIf
     EndIf
   ForEver
   If IsProgram(prog)  ; if ffmpeg is still running
     If ProgramRunning(prog)
-      Debug "kill ffmpeg"
+      LogGUI("kill ffmpeg")
       KillProgram(prog)
     EndIf 
   EndIf
@@ -193,7 +223,7 @@ Procedure ffmpeg(*job.job)
   ; no current job
   *CurrentJob = 0
   HideWindow(WindowTranscode, #True)
-  Debug "ffmpeg thread finished"
+  LogGUI("ffmpeg thread finished")
   
 EndProcedure
 
@@ -258,10 +288,10 @@ EndProcedure
 
 Procedure ButtonStartStop(EventType)
   If Queue
-    Debug "stop queue"
+    LogGUI("button: stop queue")
     Queue = #False
   Else
-    Debug "start queue"
+    LogGUI("button: start queue")
     Queue = #True 
   EndIf
   
@@ -393,16 +423,6 @@ EndProcedure
 
 init()
 
-OpenWindowMain()
-OpenWindowTranscode()
-
-SetWindowCallback(@SizeCallback(), WindowMain)
-loadWindowMainImages()
-
-EnableGadgetDrop(GadgetQueue, #PB_Drop_Files, #PB_Drag_Copy|#PB_Drag_Move|#PB_Drag_Link)
-
-HideWindow(WindowMain, #False)
-
 ;{ --------- TEST
 LockMutex(mutexJobs)
 ResetList(jobs())
@@ -426,6 +446,7 @@ Repeat
     Case WindowTranscode
       If Not WindowTranscode_Events(Event)
         If MessageRequester("Abort", "Do you really want to cancel transcoding?", #PB_MessageRequester_YesNo) = #PB_MessageRequester_Yes
+          Queue = #False
           CurrentJobAbort = #True
         EndIf
       EndIf
@@ -435,7 +456,7 @@ End
 
 XIncludeFile "data.pbi"
 ; IDE Options = PureBasic 5.11 (Windows - x64)
-; CursorPosition = 318
-; FirstLine = 86
-; Folding = Agg8
+; CursorPosition = 448
+; FirstLine = 67
+; Folding = AAAw
 ; EnableXP

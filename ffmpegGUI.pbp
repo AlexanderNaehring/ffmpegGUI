@@ -7,12 +7,12 @@
   <section name="data">
     <explorer view="..\..\Documents\" pattern="0"/>
     <log show="1"/>
-    <lastopen date="2014-07-23 20:37" user="Alexander" host="ALEXANDER-TOWER"/>
+    <lastopen date="2014-07-23 22:07" user="Alexander" host="ALEXANDER-TOWER"/>
   </section>
   <section name="files">
     <file name="source\main.pb">
       <config load="1" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="e0eb1c11dce9f56ab10e5322e8872140"/>
+      <fingerprint md5="e04fb08a7152fc698d0611f1bc88329a"/>
     </file>
     <file name="source\WindowMain.pbf">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
@@ -33,7 +33,7 @@
       <outputfile value="bin\win64\ffmpegGUI.exe"/>
       <executable value="bin\win64\ffmpegGUI.exe"/>
       <options thread="1" xpskin="1" user="1" debug="1"/>
-      <compilecount enable="1" value="157"/>
+      <compilecount enable="1" value="161"/>
       <buildcount enable="1" value="3"/>
       <execonstant enable="1"/>
     </target>

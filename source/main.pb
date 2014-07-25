@@ -46,6 +46,7 @@ Global ImageStart, ImageStop, ImageNew, ImageDelete, ImageEdit, ImageUp, ImageDo
 Declare startNextJob()
 Declare SizeCallback(WindowID, Message, wParam, lParam)
 Declare loadWindowMainImages()
+Declare updateQueueGadget()
 
 Procedure explodeStringArray(Array a$(1), s$, delimeter$)
   Protected count, i
@@ -216,6 +217,8 @@ Procedure ffmpeg(*job.job)
   *job\endTime = Date()
   If *job\durationSecondsCurrent = *job\durationSecondsTotal
     *job\done = #True
+  Else
+    *job\done = -1 ; aborted
   EndIf
   
   ; wait a moment for updating the transcoding window
@@ -310,11 +313,83 @@ Procedure ButtonDelete(EventType)
 EndProcedure
 
 Procedure ButtonUp(EventType)
+  Protected count, i
+  Protected NewList selectedItems()
+  count = ListSize(jobs())
   
+  If count > 1 ; need at least 2 elements to swap
+    If GetGadgetState(GadgetQueue) > -1
+      ; something is selected!
+      LockMutex(mutexJobs)
+      ; lock mutex in order to work on job list
+      For i = 1 To count - 1 Step 1
+        ; iterate through list from top to bottom
+        ; move all selected items up by one
+        If GetGadgetItemState(GadgetQueue, i) &  #PB_ListIcon_Selected
+          ; this item is selected -> swap with following item
+          SwapElements(jobs(), SelectElement(jobs(), i), SelectElement(jobs(), i-1))
+          ; save all previously selected items
+          AddElement(selectedItems())
+          selectedItems() = i-1
+        EndIf
+      Next
+      UnlockMutex(mutexJobs)
+      updateQueueGadget()
+      ForEach selectedItems()
+        SetGadgetItemState(GadgetQueue, selectedItems(), #PB_ListIcon_Selected)
+      Next
+      ClearList(selectedItems())
+    EndIf
+  EndIf
 EndProcedure
 
-Procedure ButtonDown(EventType)
+Procedure ButtonDown(EventType) 
+  Protected count, i
+  Protected NewList selectedItems()
+  count = ListSize(jobs())
   
+  If count > 1 ; need at least 2 elements to swap
+    If GetGadgetState(GadgetQueue) > -1
+      ; something is selected!
+      LockMutex(mutexJobs)
+      ; lock mutex in order to work on job list
+      For i = count - 2 To 0 Step -1
+        ; iterate through list from bottom to top
+        ; move all selected items down by one
+        If GetGadgetItemState(GadgetQueue, i) &  #PB_ListIcon_Selected
+          ; this item is selected -> swap with following item
+          SwapElements(jobs(), SelectElement(jobs(), i), SelectElement(jobs(), i+1))
+          ; save all previously selected items
+          AddElement(selectedItems())
+          selectedItems() = i+1
+        EndIf
+      Next
+      UnlockMutex(mutexJobs)
+      updateQueueGadget()
+      ForEach selectedItems()
+        SetGadgetItemState(GadgetQueue, selectedItems(), #PB_ListIcon_Selected)
+      Next
+      ClearList(selectedItems())
+    EndIf
+  EndIf
+;   Protected selected, count
+;   
+;   selected = GetGadgetState(GadgetQueue)
+;   Debug "selected = " +Str(selected)
+;   If selected > -1
+;     ; first element: 0
+;     LockMutex(mutexJobs)
+;     count = ListSize(jobs())
+;     Debug "count = "+Str(count)
+;     If selected < count -1
+;       SwapElements(jobs(), SelectElement(jobs(), selected), SelectElement(jobs(), selected +1))
+;       UnlockMutex(mutexJobs)
+;       updateQueueGadget()
+;       SetGadgetState(GadgetQueue, selected +1)
+;     Else
+;       UnlockMutex(mutexJobs)
+;     EndIf
+;   EndIf
 EndProcedure
 
 Procedure updateGadgets()
@@ -428,6 +503,9 @@ LockMutex(mutexJobs)
 ResetList(jobs())
 UnlockMutex(mutexJobs)
 addJob("C:\Users\Alexander\Desktop\test.mp4")
+addJob("C:\Users\Alexander\Desktop\test2.mp4")
+addJob("C:\Users\Alexander\Desktop\test3.mp4")
+addJob("C:\Users\Alexander\Desktop\test4.mp4")
 DeleteFile("C:\Users\Alexander\Desktop\test.mp4.mkv")
 ;}
 
@@ -456,7 +534,7 @@ End
 
 XIncludeFile "data.pbi"
 ; IDE Options = PureBasic 5.11 (Windows - x64)
-; CursorPosition = 448
-; FirstLine = 67
-; Folding = AAAw
+; CursorPosition = 357
+; FirstLine = 170
+; Folding = ABA1
 ; EnableXP

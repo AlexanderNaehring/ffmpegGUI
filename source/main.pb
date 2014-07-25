@@ -4,8 +4,8 @@ XIncludeFile "WindowMain.pbf"
 XIncludeFile "WindowTranscode.pbf"
 XIncludeFile "data.pbi"
 
-#DEBUGGUI = #True
-#DEBUGFFMPEG = #False
+#DEBUG_GUI = #True
+#DEBUG_FFMPEG = #False
 
 #GUI_UPDATE = 100
 
@@ -96,7 +96,7 @@ Procedure exit()
 EndProcedure
 
 Procedure LogGUI(logEntry$)
-  CompilerIf #DEBUGGUI
+  CompilerIf #DEBUG_GUI
     Debug "GUI: "+logEntry$
   CompilerEndIf
   
@@ -107,7 +107,7 @@ Procedure LogGUI(logEntry$)
 EndProcedure
 
 Procedure LogFFMPEG(logEntry$)
-  CompilerIf #DEBUGFFMPEG
+  CompilerIf #DEBUG_FFMPEG
     Debug "FFMPEG: "+logEntry$
   CompilerEndIf
   
@@ -150,7 +150,7 @@ Procedure ffmpeg(*job.job)
   c$ = c$ + " -profile:v high"
   c$ = c$ + " -threads 4"
   c$ = c$ + " "+#DQUOTE$+*job\file\destination$+#DQUOTE$
-
+  Debug dirC$+"ffmpeg"
   Debug c$
   prog = RunProgram(dirC$+"ffmpeg", c$, "./", #PB_Program_Open|#PB_Program_Read|#PB_Program_Error|#PB_Program_Write|#PB_Program_Hide)
   If Not prog
@@ -170,6 +170,7 @@ Procedure ffmpeg(*job.job)
   
   Repeat
     Delay(1)
+    
     If Not IsProgram(prog)
       Break
     EndIf
@@ -614,8 +615,8 @@ Repeat
   EndSelect
 ForEver
 End
-; IDE Options = PureBasic 5.11 (Windows - x64)
-; CursorPosition = 552
-; FirstLine = 209
+; IDE Options = PureBasic 5.22 LTS (Windows - x64)
+; CursorPosition = 142
+; FirstLine = 45
 ; Folding = ABA1
 ; EnableXP

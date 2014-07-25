@@ -2,11 +2,20 @@
 
 XIncludeFile "WindowMain.pbf"
 XIncludeFile "WindowTranscode.pbf"
+XIncludeFile "data.pbi"
 
 #DEBUGGUI = #True
 #DEBUGFFMPEG = #False
 
 #GUI_UPDATE = 100
+
+Enumeration 
+  #STATE_WAITING
+  #STATE_DONE
+  #STATE_ERROR
+  #STATE_ABORT
+  #STATE_ACTIVE
+EndEnumeration
 
 Global Event
 Global dirP$, dirC$
@@ -17,14 +26,11 @@ Structure file
 EndStructure
 
 Structure job
-  ID.i        ; Job id (for identification in queue)
-  done.i      ; boolean
+  state.i     ; waiting / done / error ...
   startTime.i ; UNIX timestamp of beginning transcoding
   endTime.i   ; UNIX timestamp of finishing transcoding
   
   file.file
-  framesTotal.i   ; number of frames as integer
-  framesCurrent.i
   durationTotal$  ; duration string as returned by FFMPEG
   durationCurrent$
   durationSecondsTotal.i  ; duration calculated as seconds
@@ -46,7 +52,7 @@ Global ImageStart, ImageStop, ImageNew, ImageDelete, ImageEdit, ImageUp, ImageDo
 Declare startNextJob()
 Declare SizeCallback(WindowID, Message, wParam, lParam)
 Declare loadWindowMainImages()
-Declare updateQueueGadget()
+Declare updateQueueGadget(saveSelected = #False)
 
 Procedure explodeStringArray(Array a$(1), s$, delimeter$)
   Protected count, i
@@ -72,6 +78,10 @@ Procedure init()
   
   SetWindowCallback(@SizeCallback(), WindowMain)
   loadWindowMainImages()
+  
+  AddGadgetColumn(GadgetQueue, 1, "source path", 150)
+  AddGadgetColumn(GadgetQueue, 2, "destination path", 150)
+  AddGadgetColumn(GadgetQueue, 3, "state", 80)
   
   EnableGadgetDrop(GadgetQueue, #PB_Drop_Files, #PB_Drag_Copy|#PB_Drag_Move|#PB_Drag_Link)
   
@@ -148,14 +158,15 @@ Procedure ffmpeg(*job.job)
     ProcedureReturn
   EndIf
   
-  
-  Protected totalTime
-  Protected out$
+  Protected totalTime, percent
+  Protected out$, sec$
   
   *CurrentJob\startTime = Date()
   *job\durationTotal$ = "00:00:00"
   *job\durationCurrent$ = "00:00:00"
   *job\percent = 0
+  *job\state = #STATE_ACTIVE
+  updateQueueGadget(#True)
   
   Repeat
     Delay(1)
@@ -182,17 +193,18 @@ Procedure ffmpeg(*job.job)
       EndIf
       
       If FindString(out$, "frame=")
-        out$ = Mid(out$, FindString(out$, "time=") + 5)
-        out$ = Left(out$, FindString(out$, ".")-1)
-        *job\durationCurrent$ = out$
-        *job\durationSecondsCurrent= getSeconds(out$)
+        sec$ = out$
+        sec$ = Mid(sec$, FindString(sec$, "time=") + 5)
+        sec$ = Left(sec$, FindString(sec$, ".")-1)
+        *job\durationCurrent$ = sec$
+        *job\durationSecondsCurrent= getSeconds(sec$)
         
         If *CurrentJob\durationSecondsTotal > 0
-          Protected percent = 100 * *job\durationSecondsCurrent / *job\durationSecondsTotal
+          percent = 100 * *job\durationSecondsCurrent / *job\durationSecondsTotal
           If percent <> *job\percent
-            LogGUI(*job\durationCurrent$ + " / " + *job\durationTotal$ + " - " + Str(percent) + "%")
+            *job\percent = percent
+;             LogGUI(*job\durationCurrent$ + " / " + *job\durationTotal$ + " - " + Str(percent) + "%")
           EndIf
-          *job\percent = percent
         EndIf
       EndIf
       
@@ -216,10 +228,11 @@ Procedure ffmpeg(*job.job)
   ; save finish date
   *job\endTime = Date()
   If *job\durationSecondsCurrent = *job\durationSecondsTotal
-    *job\done = #True
+    *job\state = #STATE_DONE
   Else
-    *job\done = -1 ; aborted
+    *job\state = #STATE_ABORT
   EndIf
+  updateQueueGadget(#True)
   
   ; wait a moment for updating the transcoding window
   Delay(2 * #GUI_UPDATE)
@@ -227,7 +240,6 @@ Procedure ffmpeg(*job.job)
   *CurrentJob = 0
   HideWindow(WindowTranscode, #True)
   LogGUI("ffmpeg thread finished")
-  
 EndProcedure
 
 Procedure SizeCallback(WindowID, Message, wParam, lParam)
@@ -309,7 +321,20 @@ Procedure ButtonEdit(EventType)
 EndProcedure
 
 Procedure ButtonDelete(EventType)
-  
+  Protected i
+  LockMutex(mutexJobs)
+  If ListSize(jobs()) > 0
+    If GetGadgetState(GadgetQueue) > -1
+      For i = ListSize(jobs()) -1 To 0 Step -1
+        If GetGadgetItemState(GadgetQueue, i)
+          SelectElement(jobs(), i)
+          DeleteElement(jobs(), 1)
+        EndIf
+      Next
+    EndIf
+  EndIf
+  UnlockMutex(mutexJobs)
+  updateQueueGadget()
 EndProcedure
 
 Procedure ButtonUp(EventType)
@@ -433,6 +458,28 @@ Procedure updateGadgets()
       EndIf
     EndIf
     
+    If GetGadgetState(GadgetQueue) > -1
+      ; only enable some GUI elements if a job is selected
+      If GetGadgetItemState(GadgetQueue, 0) & #PB_ListIcon_Selected
+        DisableGadget(ButtonUp, #True)
+      Else
+        DisableGadget(ButtonUp, #False)
+      EndIf
+      If GetGadgetItemState(GadgetQueue, ListSize(jobs())-1) & #PB_ListIcon_Selected
+        DisableGadget(ButtonDown, #True)
+      Else
+        DisableGadget(ButtonDown, #False)
+      EndIf
+      DisableGadget(ButtonEdit, #False)
+      DisableGadget(ButtonDelete, #False)
+    Else
+      DisableGadget(ButtonUp, #True)
+      DisableGadget(ButtonDown, #True)
+      DisableGadget(ButtonEdit, #True)
+      DisableGadget(ButtonDelete, #True)
+    EndIf
+    
+    
   EndIf
 EndProcedure
 
@@ -448,7 +495,7 @@ Procedure startNextJob()
   ForEach jobs()
     ; only one job at a time, so just check for jobs that are not done
     ; if there could be multiple jobs at a time, check also for running jobs
-    If Not jobs()\done
+    If jobs()\state = #STATE_WAITING
       *CurrentJob = jobs() ; copy pointer to this element
       Break ; leave loop
     EndIf
@@ -475,12 +522,46 @@ Procedure startNextJob()
   ProcedureReturn #True
 EndProcedure
 
-Procedure updateQueueGadget()
+Procedure updateQueueGadget(saveSelected = #False)
+  Protected text$, i
+  Protected NewList selected()
+  
   LockMutex(mutexJobs)
+  If saveSelected
+    For i = 0 To ListSize(jobs())-1
+      If GetGadgetItemState(GadgetQueue, i) & #PB_ListIcon_Selected
+        AddElement(selected())
+        selected() = i
+      EndIf
+    Next
+  EndIf
   ClearGadgetItems(GadgetQueue)
   ForEach jobs()
-    AddGadgetItem(GadgetQueue, -1, GetFilePart(jobs()\file\source$))
+    text$ = GetFilePart(jobs()\file\source$) + Chr(10)
+    text$ = text$ + GetPathPart(jobs()\file\source$) + Chr(10)
+    text$ = text$ + GetPathPart(jobs()\file\destination$) + Chr(10)
+    Select jobs()\state
+      Case #STATE_WAITING
+        text$ = text$ + "waiting"
+      Case #STATE_ABORT
+        text$ = text$ + "aborted"
+      Case #STATE_ERROR
+        text$ = text$ + "error"
+      Case #STATE_DONE
+        text$ = text$ + "done"
+      Case #STATE_ACTIVE
+        text$ = text$ + "transcoding"
+      Default
+        text$ = text$ + ""
+    EndSelect
+    AddGadgetItem(GadgetQueue, -1, text$)
   Next
+  If saveSelected
+    ForEach selected()
+      SetGadgetItemState(GadgetQueue, selected(), #PB_ListIcon_Selected)
+    Next
+    ClearList(selected())
+  EndIf
   UnlockMutex(mutexJobs)
 EndProcedure
 
@@ -489,8 +570,10 @@ Procedure addJob(source$)
   LastElement(jobs())
   AddElement(jobs())
   With jobs()
+    \state = #STATE_WAITING
     \file\source$       = source$
     \file\destination$  = source$+".mkv"
+    \durationTotal$ = ""
   EndWith
   UnlockMutex(mutexJobs)
   updateQueueGadget()
@@ -531,10 +614,8 @@ Repeat
   EndSelect
 ForEver
 End
-
-XIncludeFile "data.pbi"
 ; IDE Options = PureBasic 5.11 (Windows - x64)
-; CursorPosition = 357
-; FirstLine = 170
+; CursorPosition = 552
+; FirstLine = 209
 ; Folding = ABA1
 ; EnableXP

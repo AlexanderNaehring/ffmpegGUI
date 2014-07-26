@@ -1,40 +1,51 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<project xmlns="http://www.purebasic.com/namespace" version="1.0" creator="PureBasic 5.22 LTS (Windows - x64)">
+<project xmlns="http://www.purebasic.com/namespace" version="1.0" creator="PureBasic 5.30 (Windows - x64)">
   <section name="config">
     <options closefiles="1" openmode="0" name="ffmpegGUI"/>
   </section>
   <section name="data">
     <explorer view="..\..\Documents\" pattern="0"/>
     <log show="1"/>
-    <lastopen date="2014-07-25 14:50" user="Alexander" host="ALEXANDER-TOWER"/>
+    <lastopen date="2014-07-25 15:35" user="Alexander" host="ALEXANDER-TOWER"/>
   </section>
   <section name="files">
     <file name="source\data.pbi">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="51ff6c3b77cc2146f53278cf68017c91"/>
+      <fingerprint md5="0f9bd069fbcc731bd271ffc3cea0fb2b"/>
     </file>
     <file name="source\main.pb">
       <config load="1" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="726f0a101238c0d2a906d1950c43cf68"/>
+      <fingerprint md5="761670f28aea7651bf0e434e82cdfc8b"/>
     </file>
     <file name="source\WindowMain.pbf">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="a32f98bada06406a21920dc51fe16ef9"/>
+      <fingerprint md5="27cbb4037e3220de36611393cff744bd"/>
     </file>
     <file name="source\WindowTranscode.pbf">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="bc828a84a882f7725a7bbbcfdc61c2f0"/>
+      <fingerprint md5="2edbc22355750e4c86c397215164cbdd"/>
     </file>
   </section>
   <section name="targets">
     <target name="win64" enabled="1" default="1">
       <inputfile value="source\main.pb"/>
       <outputfile value="bin\win64\ffmpegGUI.exe"/>
+      <compiler version="PureBasic 5.22 LTS (Windows - x64)"/>
       <executable value="bin\win64\ffmpegGUI.exe"/>
       <options thread="1" xpskin="1" user="1" debug="1"/>
-      <compilecount enable="1" value="246"/>
-      <buildcount enable="1" value="5"/>
+      <compilecount enable="1" value="270"/>
+      <buildcount enable="1" value="8"/>
+      <execonstant enable="1"/>
+    </target>
+    <target name="win32" enabled="1" default="0">
+      <inputfile value="source\main.pb"/>
+      <outputfile value="bin\win32\ffmpegGUI.exe"/>
+      <compiler version="PureBasic 5.22 LTS (Windows - x86)"/>
+      <executable value="bin\win32\ffmpegGUI.exe"/>
+      <options thread="1" xpskin="1" user="1" debug="1"/>
+      <compilecount enable="1" value="269"/>
+      <buildcount enable="1" value="7"/>
       <execonstant enable="1"/>
     </target>
   </section>

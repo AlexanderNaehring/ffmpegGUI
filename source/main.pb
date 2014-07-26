@@ -47,7 +47,7 @@ Global mutexJobs = CreateMutex()
 
 Global FileLogGUI, FileLogFFMPEG
 
-Global ImageStart, ImageStop, ImageNew, ImageDelete, ImageEdit, ImageUp, ImageDown
+Global ImageStart, ImageStop, ImageNew, ImageDelete, ImageEdit, ImageUp, ImageDown, ImageRequeue
 
 Declare startNextJob()
 Declare SizeCallback(WindowID, Message, wParam, lParam)
@@ -273,6 +273,7 @@ Procedure loadWindowMainImages()
   ImageEdit   = CatchImage(#PB_Any, ?DataImageEdit)
   ImageUp     = CatchImage(#PB_Any, ?DataImageUp)
   ImageDown   = CatchImage(#PB_Any, ?DataImageDown)
+  ImageRequeue= CatchImage(#PB_Any, ?DataImageRequeue)
   
   SetGadgetImage(ButtonStartStop, ImageStart)
   SetGadgetImage(ButtonNew, ImageNew)
@@ -280,6 +281,7 @@ Procedure loadWindowMainImages()
   SetGadgetImage(ButtonEdit, ImageEdit)
   SetGadgetImage(ButtonUp, ImageUp)
   SetGadgetImage(ButtonDown, ImageDown)
+  SetGadgetImage(ButtonRequeue, ImageRequeue)
   
 EndProcedure
 
@@ -418,6 +420,23 @@ Procedure ButtonDown(EventType)
 ;   EndIf
 EndProcedure
 
+Procedure ButtonRequeue(EventType) 
+  Protected i
+  LockMutex(mutexJobs)
+  If ListSize(jobs()) > 0
+    If GetGadgetState(GadgetQueue) > -1
+      For i = 0 To ListSize(jobs()) -1
+        If GetGadgetItemState(GadgetQueue, i)
+          SelectElement(jobs(), i)
+          jobs()\state = #STATE_WAITING
+        EndIf
+      Next
+    EndIf
+  EndIf
+  UnlockMutex(mutexJobs)
+  updateQueueGadget(#True)
+EndProcedure
+
 Procedure updateGadgets()
   Static lastUpdate = 0
   Protected elapsedTime, totalTime, remainingTime  
@@ -471,9 +490,11 @@ Procedure updateGadgets()
       Else
         DisableGadget(ButtonDown, #False)
       EndIf
+      DisableGadget(ButtonRequeue, #False)
       DisableGadget(ButtonEdit, #False)
       DisableGadget(ButtonDelete, #False)
     Else
+      DisableGadget(ButtonRequeue, #True)
       DisableGadget(ButtonUp, #True)
       DisableGadget(ButtonDown, #True)
       DisableGadget(ButtonEdit, #True)
@@ -616,7 +637,7 @@ Repeat
 ForEver
 End
 ; IDE Options = PureBasic 5.22 LTS (Windows - x64)
-; CursorPosition = 142
-; FirstLine = 45
-; Folding = ABA1
+; CursorPosition = 436
+; FirstLine = 75
+; Folding = AIAr-
 ; EnableXP

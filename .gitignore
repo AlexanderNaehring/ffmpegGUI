@@ -36,5 +36,4 @@ Icon
 .Trashes
 
 *.exe
-source/gui.log
-source/ffmpeg.log
+*.log

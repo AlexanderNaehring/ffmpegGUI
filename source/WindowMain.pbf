@@ -9,7 +9,7 @@
 
 Global WindowMain
 
-Global GadgetQueue, ButtonStartStop, ButtonNew, ButtonDelete, ButtonEdit, ButtonUp, ButtonDown
+Global GadgetQueue, ButtonStartStop, ButtonNew, ButtonDelete, ButtonEdit, ButtonUp, ButtonDown, ButtonRequeue
 
 Declare ResizeGadgetsWindowMain()
 
@@ -17,6 +17,7 @@ Declare ButtonStartStop(EventType)
 Declare ButtonNew(EventType)
 Declare ButtonDown(EventType)
 Declare GadgetQueue(EventType)
+Declare ButtonRequeue(EventType)
 Declare ButtonEdit(EventType)
 Declare ButtonUp(EventType)
 Declare ButtonDelete(EventType)
@@ -24,18 +25,20 @@ Declare ButtonDelete(EventType)
 Procedure OpenWindowMain(x = 0, y = 0, width = 800, height = 500)
   WindowMain = OpenWindow(#PB_Any, x, y, width, height, "ffmpegGUI", #PB_Window_SystemMenu | #PB_Window_MinimizeGadget | #PB_Window_MaximizeGadget | #PB_Window_SizeGadget | #PB_Window_Invisible | #PB_Window_ScreenCentered)
   GadgetQueue = ListIconGadget(#PB_Any, 10, 10, 720, 480, "Filename", 120, #PB_ListIcon_MultiSelect | #PB_ListIcon_GridLines | #PB_ListIcon_FullRowSelect | #PB_ListIcon_HeaderDragDrop | #PB_ListIcon_AlwaysShowSelection)
-  ButtonStartStop = ButtonImageGadget(#PB_Any, 740, 30, 50, 50, 0)
+  ButtonStartStop = ButtonImageGadget(#PB_Any, 740, 10, 50, 50, 0)
   GadgetToolTip(ButtonStartStop, "Start/stop queue")
-  ButtonNew = ButtonImageGadget(#PB_Any, 740, 90, 50, 50, 0)
+  ButtonNew = ButtonImageGadget(#PB_Any, 740, 70, 50, 50, 0)
   GadgetToolTip(ButtonNew, "Add a new job")
-  ButtonDelete = ButtonImageGadget(#PB_Any, 740, 150, 50, 50, 0)
+  ButtonDelete = ButtonImageGadget(#PB_Any, 740, 190, 50, 50, 0)
   GadgetToolTip(ButtonDelete, "Delete selected job")
-  ButtonEdit = ButtonImageGadget(#PB_Any, 740, 210, 50, 50, 0)
+  ButtonEdit = ButtonImageGadget(#PB_Any, 740, 250, 50, 50, 0)
   GadgetToolTip(ButtonEdit, "Edit selected job")
-  ButtonUp = ButtonImageGadget(#PB_Any, 740, 270, 50, 25, 0)
+  ButtonUp = ButtonImageGadget(#PB_Any, 740, 310, 50, 25, 0)
   GadgetToolTip(ButtonUp, "Move selected job up in queue")
-  ButtonDown = ButtonImageGadget(#PB_Any, 740, 300, 50, 25, 0)
+  ButtonDown = ButtonImageGadget(#PB_Any, 740, 340, 50, 25, 0)
   GadgetToolTip(ButtonDown, "Move selected job down in queue")
+  ButtonRequeue = ButtonImageGadget(#PB_Any, 740, 130, 50, 50, 0)
+  GadgetToolTip(ButtonRequeue, "Requeue selected job (set state to 'waiting')")
 EndProcedure
 
 Procedure ResizeGadgetsWindowMain()
@@ -43,12 +46,13 @@ Procedure ResizeGadgetsWindowMain()
   FormWindowWidth = WindowWidth(WindowMain)
   FormWindowHeight = WindowHeight(WindowMain)
   ResizeGadget(GadgetQueue, 10, 10, FormWindowWidth - 80, FormWindowHeight - 20)
-  ResizeGadget(ButtonStartStop, FormWindowWidth - 60, 30, 50, 50)
-  ResizeGadget(ButtonNew, FormWindowWidth - 60, 90, 50, 50)
-  ResizeGadget(ButtonDelete, FormWindowWidth - 60, 150, 50, 50)
-  ResizeGadget(ButtonEdit, FormWindowWidth - 60, 210, 50, 50)
-  ResizeGadget(ButtonUp, FormWindowWidth - 60, 270, 50, 25)
-  ResizeGadget(ButtonDown, FormWindowWidth - 60, 300, 50, 25)
+  ResizeGadget(ButtonStartStop, FormWindowWidth - 60, 10, 50, 50)
+  ResizeGadget(ButtonNew, FormWindowWidth - 60, 70, 50, 50)
+  ResizeGadget(ButtonDelete, FormWindowWidth - 60, 190, 50, 50)
+  ResizeGadget(ButtonEdit, FormWindowWidth - 60, 250, 50, 50)
+  ResizeGadget(ButtonUp, FormWindowWidth - 60, 310, 50, 25)
+  ResizeGadget(ButtonDown, FormWindowWidth - 60, 340, 50, 25)
+  ResizeGadget(ButtonRequeue, FormWindowWidth - 60, 130, 50, 50)
 EndProcedure
 
 Procedure WindowMain_Events(event)
@@ -78,6 +82,8 @@ Procedure WindowMain_Events(event)
           ButtonUp(EventType())          
         Case ButtonDown
           ButtonDown(EventType())          
+        Case ButtonRequeue
+          ButtonRequeue(EventType())          
       EndSelect
   EndSelect
   ProcedureReturn #True

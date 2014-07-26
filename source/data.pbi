@@ -15,7 +15,9 @@ DataSection
   IncludeBinary "images/up.png"
   DataImageDown:
   IncludeBinary "images/down.png"
+  DataImageRequeue:
+  IncludeBinary "images/requeue.png"
 EndDataSection
 ; IDE Options = PureBasic 5.22 LTS (Windows - x64)
-; CursorPosition = 17
+; CursorPosition = 19
 ; EnableXP

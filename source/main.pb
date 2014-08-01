@@ -31,6 +31,7 @@ Structure job
   endTime.i   ; UNIX timestamp of finishing transcoding
   
   file.file
+  error$
   durationTotal$  ; duration string as returned by FFMPEG
   durationCurrent$
   durationSecondsTotal.i  ; duration calculated as seconds
@@ -136,7 +137,7 @@ EndProcedure
 Procedure ffmpeg(*job.job)
   Protected prog
   Protected c$ = ""
-    
+  
   c$ = c$ + "-i "+#DQUOTE$+*job\file\source$+#DQUOTE$
   c$ = c$ + " -map 0"
   c$ = c$ + " -scodec copy"
@@ -429,6 +430,7 @@ Procedure ButtonRequeue(EventType)
         If GetGadgetItemState(GadgetQueue, i)
           SelectElement(jobs(), i)
           jobs()\state = #STATE_WAITING
+          jobs()\error$ = ""
         EndIf
       Next
     EndIf
@@ -515,10 +517,10 @@ Procedure startNextJob()
   EndIf
   
   ForEach jobs()
-    ; only one job at a time, so just check for jobs that are not done
-    ; if there could be multiple jobs at a time, check also for running jobs
+    ; search for a job waiting to be processed
     If jobs()\state = #STATE_WAITING
       *CurrentJob = jobs() ; copy pointer to this element
+      *CurrentJob\state = #STATE_ACTIVE
       Break ; leave loop
     EndIf
   Next
@@ -526,6 +528,16 @@ Procedure startNextJob()
   
   If Not *CurrentJob ; no next job found
     ProcedureReturn #False
+  EndIf
+  
+  *CurrentJob\error$ = "" ; reset all past error messages
+  ; check if source file exists
+  If FileSize(*CurrentJob\file\source$) <= 0
+    *CurrentJob\state = #STATE_ERROR
+    *CurrentJob\error$ = "file not found"
+    *CurrentJob = 0
+    updateQueueGadget(#True)
+    ProcedureReturn #True
   EndIf
   
   ; "reset" Transcoding window before showing
@@ -636,8 +648,8 @@ Repeat
   EndSelect
 ForEver
 End
-; IDE Options = PureBasic 5.22 LTS (Windows - x64)
-; CursorPosition = 436
-; FirstLine = 75
-; Folding = AIAr-
+; IDE Options = PureBasic 5.30 (Windows - x64)
+; CursorPosition = 432
+; FirstLine = 59
+; Folding = AAAl-
 ; EnableXP

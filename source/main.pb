@@ -691,7 +691,6 @@ EndProcedure
 
 init()
 
-
 Repeat
   updateGadgets()
   Event = WaitWindowEvent(100)
@@ -715,7 +714,7 @@ Repeat
 ForEver
 End
 ; IDE Options = PureBasic 5.30 (Windows - x64)
-; CursorPosition = 692
-; FirstLine = 143
+; CursorPosition = 691
+; FirstLine = 142
 ; Folding = aAAA+
 ; EnableXP

@@ -25,6 +25,12 @@ Structure file
   destination$
 EndStructure
 
+Structure transcodingTime
+  total.i
+  elapsed.i
+  remaining.i
+EndStructure
+
 Structure job
   state.i     ; waiting / done / error ...
   startTime.i ; UNIX timestamp of beginning transcoding
@@ -36,7 +42,8 @@ Structure job
   durationCurrent$
   durationSecondsTotal.i  ; duration calculated as seconds
   durationSecondsCurrent.i
-  percent.i
+  percent.d
+  transcodingTime.transcodingTime
 EndStructure
 
 Global Queue.b                ; #True if next job should be startet, #False if next job should NOT be startet
@@ -56,6 +63,7 @@ Declare loadWindowMainImages()
 Declare updateQueueGadget(saveSelected = #False)
 Declare LogGUI(logEntry$)
 Declare LogFFMPEG(logEntry$)
+Declare addJob(source$)
 
 Procedure explodeStringArray(Array a$(1), s$, delimeter$)
   Protected count, i
@@ -142,8 +150,8 @@ Procedure init()
   dirP$ = ProgramFilename()
   dirC$ = GetCurrentDirectory()
   
-  FileLogFFMPEG = CreateFile(#PB_Any, "ffmpeg.log")
-  FileLogGUI = CreateFile(#PB_Any, "gui.log")
+  FileLogFFMPEG = CreateFile(#PB_Any, "ffmpeg.log", #PB_File_NoBuffering|#PB_File_SharedRead)
+  FileLogGUI = CreateFile(#PB_Any, "gui.log", #PB_File_NoBuffering|#PB_File_SharedRead)
   
   OpenWindowMain()
   OpenWindowTranscode()
@@ -215,6 +223,7 @@ Procedure ffmpeg(*job.job)
   Protected c$ = ""
   
   c$ = c$ + "-i "+#DQUOTE$+*job\file\source$+#DQUOTE$
+  c$ = c$ + " -y" ; -y for overwriting, -n for not overwriting
   c$ = c$ + " -map 0"
   c$ = c$ + " -scodec copy"
   c$ = c$ + " -acodec libvorbis"
@@ -227,21 +236,24 @@ Procedure ffmpeg(*job.job)
   c$ = c$ + " -profile:v high"
   c$ = c$ + " -threads 4"
   c$ = c$ + " "+#DQUOTE$+*job\file\destination$+#DQUOTE$
-  Debug dirC$+"ffmpeg"
-  Debug c$
+  
+  LogGUI("ffmpeg "+c$)
   prog = RunProgram(dirC$+"ffmpeg", c$, "./", #PB_Program_Open|#PB_Program_Read|#PB_Program_Error|#PB_Program_Write|#PB_Program_Hide)
   If Not prog
     LogGUI("Could not start '"+dirC$+"ffmpeg'")
     ProcedureReturn
   EndIf
   
-  Protected totalTime, percent
+  Protected totalTime.i
   Protected out$, sec$
   
-  *CurrentJob\startTime = Date()
+  *job\startTime = Date()
   *job\durationTotal$ = "00:00:00"
   *job\durationCurrent$ = "00:00:00"
   *job\percent = 0
+  *job\transcodingTime\total = 0
+  *job\transcodingTime\remaining = 0
+  *job\transcodingTime\elapsed = 0
   *job\state = #STATE_ACTIVE
   updateQueueGadget(#True)
   
@@ -278,11 +290,7 @@ Procedure ffmpeg(*job.job)
         *job\durationSecondsCurrent= getSeconds(sec$)
         
         If *CurrentJob\durationSecondsTotal > 0
-          percent = 100 * *job\durationSecondsCurrent / *job\durationSecondsTotal
-          If percent <> *job\percent
-            *job\percent = percent
-;             LogGUI(*job\durationCurrent$ + " / " + *job\durationTotal$ + " - " + Str(percent) + "%")
-          EndIf
+          *job\percent = 100 * *job\durationSecondsCurrent / *job\durationSecondsTotal
         EndIf
       EndIf
       
@@ -374,7 +382,7 @@ Procedure FileDrop()
   If files$
     explodeStringArray(files$(), files$, Chr(10))
     For i = 0 To ArraySize(files$())-1
-      Debug "- "+files$(i)
+      addJob(files$(i))
     Next
     
   EndIf
@@ -515,71 +523,117 @@ Procedure ButtonRequeue(EventType)
   updateQueueGadget(#True)
 EndProcedure
 
-Procedure updateGadgets()
-  Static lastUpdate = 0
-  Protected elapsedTime, totalTime, remainingTime  
-  Static lastQueue
-  
-  If lastUpdate < ElapsedMilliseconds() - #GUI_UPDATE
-    lastUpdate = ElapsedMilliseconds()
+Procedure Timer1sec()
+  Protected elapsedTime.i, totalTime.d, remainingTime.i, i.i, weight.d, totalWeight.d
+  #SIZE = 60
+  Static Dim totalTime(#SIZE) ;total time values of last minute
+  Static *job ;save job ID!
+  Static el
     
-    If *CurrentJob
-      elapsedTime = Date() - *CurrentJob\startTime
-      If *CurrentJob\percent
-        totalTime = elapsedTime * 100 / *CurrentJob\percent
-        remainingTime = totalTime - elapsedTime
+  If *CurrentJob
+    ; if new job: reset static variables
+    If *CurrentJob <> *job
+      For i = 0 To #SIZE -1
+        totalTime(i) = 0
+      Next
+      *job = *CurrentJob
+      el = 0
+    EndIf
+    
+    With *CurrentJob
+      elapsedTime = Date() - \startTime
+      totalTime(el) = 0
+      If \percent
+        ;update one entry in array
+        totalTime(el) = elapsedTime * 100 / \percent 
+        ; calculate average of all entries > 0
+        ; weight the entries: newest with 1, oldest with 0
+        totalWeight = 0
+        For i = el To #SIZE+el
+          If totalTime(i%#SIZE) > 0
+            weight = 1-(i-el)/#SIZE
+            totalTime = totalTime + weight * totalTime(i%#SIZE)
+            totalWeight = totalWeight + weight
+          EndIf
+        Next
+        totalTime = totalTime / totalWeight
       Else
         totalTime = 0
+      EndIf
+      remainingTime = totalTime - elapsedTime
+      If remainingTime < 0
         remainingTime = 0
       EndIf
-
-      SetGadgetText(StringPosition, *CurrentJob\durationCurrent$+" / "+*CurrentJob\durationTotal$)
-      SetGadgetText(StringFrames, "0 / 0")
+      
+      \transcodingTime\elapsed = elapsedTime
+      \transcodingTime\total = totalTime
+      \transcodingTime\remaining = remainingTime
+      
+      SetGadgetText(StringPosition, \durationCurrent$ +" / "+ \durationTotal$)
       SetGadgetText(StringTimeElapsed, FormatDate("%hh:%ii:%ss", elapsedTime))
       SetGadgetText(StringTimeRemaining, FormatDate("%hh:%ii:%ss", remainingTime))
-      SetGadgetState(ProgressBarVideo, *CurrentJob\percent)
-    EndIf
+      SetGadgetState(ProgressBarVideo, \percent)
+    EndWith
     
-    If Queue <> lastQueue
-      lastQueue = Queue
-      If Queue 
-        SetGadgetImage(ButtonStartStop, ImageStop)
-      Else
-        SetGadgetImage(ButtonStartStop, ImageStart)
-      EndIf
-    EndIf
-    
-    If Queue And Not *CurrentJob ; if queue is running but no current job is active
-      If Not startNextJob()
-        ; no more undone jobs available or some other error
-        Queue = #False
-      EndIf
-    EndIf
-    
-    If GetGadgetState(GadgetQueue) > -1
-      ; only enable some GUI elements if a job is selected
-      If GetGadgetItemState(GadgetQueue, 0) & #PB_ListIcon_Selected
-        DisableGadget(ButtonUp, #True)
-      Else
-        DisableGadget(ButtonUp, #False)
-      EndIf
-      If GetGadgetItemState(GadgetQueue, ListSize(jobs())-1) & #PB_ListIcon_Selected
-        DisableGadget(ButtonDown, #True)
-      Else
-        DisableGadget(ButtonDown, #False)
-      EndIf
-      DisableGadget(ButtonRequeue, #False)
-      DisableGadget(ButtonEdit, #False)
-      DisableGadget(ButtonDelete, #False)
+    el = (el + 1) % ArraySize(totalTime()) ;increase counter for next round
+  EndIf
+EndProcedure
+
+Procedure TimerGUI_Update()
+  Static lastQueue
+  
+  If Queue <> lastQueue
+    lastQueue = Queue
+    If Queue 
+     SetGadgetImage(ButtonStartStop, ImageStop)
     Else
-      DisableGadget(ButtonRequeue, #True)
-      DisableGadget(ButtonUp, #True)
-      DisableGadget(ButtonDown, #True)
-      DisableGadget(ButtonEdit, #True)
-      DisableGadget(ButtonDelete, #True)
+      SetGadgetImage(ButtonStartStop, ImageStart)
+   EndIf
+  EndIf
+  
+  If Queue And Not *CurrentJob ; if queue is running but no current job is active
+    If Not startNextJob()
+      ; no more undone jobs available or some other error
+      Queue = #False
     EndIf
-    
-    
+  EndIf
+  
+  If GetGadgetState(GadgetQueue) > -1
+    ; only enable some GUI elements if a job is selected
+    If GetGadgetItemState(GadgetQueue, 0) & #PB_ListIcon_Selected
+      DisableGadget(ButtonUp, #True)
+    Else
+      DisableGadget(ButtonUp, #False)
+    EndIf
+    If GetGadgetItemState(GadgetQueue, ListSize(jobs())-1) & #PB_ListIcon_Selected
+      DisableGadget(ButtonDown, #True)
+    Else
+      DisableGadget(ButtonDown, #False)
+    EndIf
+     DisableGadget(ButtonRequeue, #False)
+    DisableGadget(ButtonEdit, #False)
+    DisableGadget(ButtonDelete, #False)
+  Else
+    DisableGadget(ButtonRequeue, #True)
+    DisableGadget(ButtonUp, #True)
+    DisableGadget(ButtonDown, #True)
+    DisableGadget(ButtonEdit, #True)
+    DisableGadget(ButtonDelete, #True)
+  EndIf
+EndProcedure
+
+
+Procedure updateGadgets()
+  Static lastUpdate1 = 0
+  Static lastUpdate2 = 0
+  
+  If lastUpdate1 < ElapsedMilliseconds() - #GUI_UPDATE
+    lastUpdate1 = ElapsedMilliseconds()
+    TimerGUI_Update()
+  EndIf
+  If lastUpdate2 < ElapsedMilliseconds() - 1000
+    lastUpdate2 = ElapsedMilliseconds()
+    Timer1sec()
   EndIf
 EndProcedure
 
@@ -620,7 +674,6 @@ Procedure startNextJob()
   SetGadgetText(StringInput, *CurrentJob\file\source$)
   SetGadgetText(StringOutput, *CurrentJob\file\destination$)
   SetGadgetText(StringPosition, "00:00:00 / 00:00:00")
-  SetGadgetText(StringFrames, "0 / 0")
   SetGadgetText(StringTimeElapsed, "00:00:00")
   SetGadgetText(StringTimeRemaining, "00:00:00")
   SetGadgetState(ProgressBarVideo, 0)
@@ -689,6 +742,8 @@ Procedure addJob(source$)
   updateQueueGadget()
 EndProcedure
 
+;- main program:
+
 init()
 
 Repeat
@@ -714,7 +769,7 @@ Repeat
 ForEver
 End
 ; IDE Options = PureBasic 5.30 (Windows - x64)
-; CursorPosition = 691
-; FirstLine = 142
-; Folding = aAAA+
+; CursorPosition = 254
+; FirstLine = 98
+; Folding = AEA56
 ; EnableXP

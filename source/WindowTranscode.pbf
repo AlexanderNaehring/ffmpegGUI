@@ -1,4 +1,4 @@
-; Form Designer for Purebasic - 5.22
+; Form Designer for Purebasic - 5.30
 ; Warning: this file uses a strict syntax, if you edit it, make sure to respect the Form Designer limitation or it won't be opened again.
 
 ;
@@ -9,7 +9,7 @@
 
 Global WindowTranscode
 
-Global StringInput, Gadget, Gadget, StringOutput, Text_1_Copy1_Copy1, StringPosition, Text_1_Copy1_Copy1_Copy1, StringFrames, Text_1_Copy1_Copy1_Copy1_Copy1, Text_1_Copy1_Copy1_Copy1, Frame, Frame, StringTimeElapsed, StringTimeRemaining, ProgressBarVideo
+Global StringInput, Gadget, Gadget, StringOutput, Gadget, StringPosition, Gadget, StringUnused, Gadget, Gadget, Frame, Frame, StringTimeElapsed, StringTimeRemaining, ProgressBarVideo
 
 
 Procedure OpenWindowTranscode(x = 0, y = 0, width = 375, height = 220)
@@ -18,14 +18,14 @@ Procedure OpenWindowTranscode(x = 0, y = 0, width = 375, height = 220)
   Gadget = TextGadget(#PB_Any, 15, 30, 50, 20, "Input:")
   Gadget = TextGadget(#PB_Any, 15, 60, 50, 20, "Output:")
   StringOutput = StringGadget(#PB_Any, 70, 60, 290, 20, "C:\", #PB_String_ReadOnly)
-  Text_1_Copy1_Copy1 = TextGadget(#PB_Any, 15, 120, 50, 20, "Position:")
+  Gadget = TextGadget(#PB_Any, 15, 120, 50, 20, "Position:")
   StringPosition = StringGadget(#PB_Any, 70, 120, 130, 20, "00:00:00 / 00:00:00", #PB_String_ReadOnly)
-  Text_1_Copy1_Copy1_Copy1 = TextGadget(#PB_Any, 210, 120, 50, 20, "Frames:")
-  HideGadget(Text_1_Copy1_Copy1_Copy1, 1)
-  StringFrames = StringGadget(#PB_Any, 260, 120, 100, 20, "0 / 0", #PB_String_ReadOnly)
-  HideGadget(StringFrames, 1)
-  Text_1_Copy1_Copy1_Copy1_Copy1 = TextGadget(#PB_Any, 195, 150, 90, 20, "Time remaining:")
-  Text_1_Copy1_Copy1_Copy1 = TextGadget(#PB_Any, 15, 150, 75, 20, "Time elapsed:")
+  Gadget = TextGadget(#PB_Any, 210, 120, 50, 20, "unsused")
+  HideGadget(Gadget, 1)
+  StringUnused = StringGadget(#PB_Any, 260, 120, 100, 20, "---", #PB_String_ReadOnly)
+  HideGadget(StringUnused, 1)
+  Gadget = TextGadget(#PB_Any, 195, 150, 90, 20, "Time remaining:")
+  Gadget = TextGadget(#PB_Any, 15, 150, 75, 20, "Time elapsed:")
   Frame = FrameGadget(#PB_Any, 5, 5, 365, 85, "Transcoding")
   Frame = FrameGadget(#PB_Any, 5, 95, 365, 120, "Progress")
   StringTimeElapsed = StringGadget(#PB_Any, 95, 150, 70, 20, "00:00:00", #PB_String_ReadOnly)

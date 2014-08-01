@@ -54,6 +54,8 @@ Declare startNextJob()
 Declare SizeCallback(WindowID, Message, wParam, lParam)
 Declare loadWindowMainImages()
 Declare updateQueueGadget(saveSelected = #False)
+Declare LogGUI(logEntry$)
+Declare LogFFMPEG(logEntry$)
 
 Procedure explodeStringArray(Array a$(1), s$, delimeter$)
   Protected count, i
@@ -65,6 +67,75 @@ Procedure explodeStringArray(Array a$(1), s$, delimeter$)
     a$(i - 1) = StringField(s$,i,delimeter$)
   Next
   ProcedureReturn count ;return count of substrings
+EndProcedure
+
+Procedure loadJobs()
+  LogGUI("loading list of jobs...")
+  Protected  i, size
+  
+  If OpenPreferences("jobs.ini")
+    
+    LockMutex(mutexJobs)
+    
+    ClearList(jobs())
+    size = ReadPreferenceInteger("jobcount", 0)
+    If size > 0
+      For i = 0 To size-1 Step 1
+        AddElement(jobs())
+        With jobs()
+          PreferenceGroup("job"+Str(i))
+          \state = ReadPreferenceInteger("state", #STATE_WAITING)
+          \startTime = ReadPreferenceInteger("start", 0)
+          \endTime = ReadPreferenceInteger("end", 0)
+          \file\source$ = ReadPreferenceString("source", "")
+          \file\destination$ = ReadPreferenceString("destination", "")
+          \error$ = ReadPreferenceString("error", "")
+          \durationTotal$ = ReadPreferenceString("duration", "00:00:00")
+        EndWith
+      Next
+    EndIf
+    ForEach jobs()
+      If jobs()\file\source$ = ""
+        DeleteElement(jobs(), 1)
+      EndIf
+    Next
+    
+    UnlockMutex(mutexJobs)
+    
+    ClosePreferences()
+    updateQueueGadget()
+  Else
+    LogGUI("error: could not open jobs.ini")
+  EndIf 
+EndProcedure
+
+Procedure saveJobs()
+  LogGUI("saving list of jobs...")
+  Protected  i, size
+  
+  If CreatePreferences("jobs.ini")
+    LockMutex(mutexJobs)
+    
+    ResetList(jobs())
+    size = ListSize(jobs())
+    WritePreferenceInteger("jobcount", size)
+    For i = 0 To size-1 Step 1
+      SelectElement(jobs(), i)
+      PreferenceGroup("job"+Str(i))
+      WritePreferenceInteger("state", jobs()\state)
+      WritePreferenceInteger("start", jobs()\startTime)
+      WritePreferenceInteger("end", jobs()\endTime)
+      WritePreferenceString("source", jobs()\file\source$)
+      WritePreferenceString("destination", jobs()\file\destination$)
+      WritePreferenceString("error", jobs()\error$)
+      WritePreferenceString("duration", jobs()\durationTotal$)
+    Next
+    
+    UnlockMutex(mutexJobs)
+    ClosePreferences()
+  Else
+    LogGUI("error: could not create jobs.ini")
+  EndIf 
 EndProcedure
 
 Procedure init()
@@ -86,11 +157,16 @@ Procedure init()
   
   EnableGadgetDrop(GadgetQueue, #PB_Drop_Files, #PB_Drag_Copy|#PB_Drag_Move|#PB_Drag_Link)
   
+  loadJobs()
+  
   HideWindow(WindowMain, #False)
 EndProcedure
 
 Procedure exit()
   HideWindow(WindowMain, #True)
+  
+  saveJobs()
+  
   CloseFile(FileLogFFMPEG)
   CloseFile(FileLogGUI)
   End
@@ -615,16 +691,6 @@ EndProcedure
 
 init()
 
-;{ --------- TEST
-LockMutex(mutexJobs)
-ResetList(jobs())
-UnlockMutex(mutexJobs)
-addJob("C:\Users\Alexander\Desktop\test.mp4")
-addJob("C:\Users\Alexander\Desktop\test2.mp4")
-addJob("C:\Users\Alexander\Desktop\test3.mp4")
-addJob("C:\Users\Alexander\Desktop\test4.mp4")
-DeleteFile("C:\Users\Alexander\Desktop\test.mp4.mkv")
-;}
 
 Repeat
   updateGadgets()
@@ -649,7 +715,7 @@ Repeat
 ForEver
 End
 ; IDE Options = PureBasic 5.30 (Windows - x64)
-; CursorPosition = 432
-; FirstLine = 59
-; Folding = AAAl-
+; CursorPosition = 692
+; FirstLine = 143
+; Folding = aAAA+
 ; EnableXP

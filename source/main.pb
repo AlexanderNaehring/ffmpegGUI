@@ -289,7 +289,7 @@ Procedure ffmpeg(*job.job)
         *job\durationCurrent$ = sec$
         *job\durationSecondsCurrent= getSeconds(sec$)
         
-        If *CurrentJob\durationSecondsTotal > 0
+        If *job\durationSecondsTotal > 0
           *job\percent = 100 * *job\durationSecondsCurrent / *job\durationSecondsTotal
         EndIf
       EndIf
@@ -322,9 +322,11 @@ Procedure ffmpeg(*job.job)
   
   ; wait a moment for updating the transcoding window
   Delay(2 * #GUI_UPDATE)
+  HideWindow(WindowTranscode, #True)
+  ; wait again for hiding the trancoding window
+  Delay(2 * #GUI_UPDATE)
   ; no current job
   *CurrentJob = 0
-  HideWindow(WindowTranscode, #True)
   LogGUI("ffmpeg thread finished")
 EndProcedure
 
@@ -401,7 +403,14 @@ Procedure ButtonStartStop(EventType)
 EndProcedure
 
 Procedure ButtonNew(EventType)
+  Protected pattern$, filename$
+  pattern$ = "Movie files|*.3gp;*.gif;*.asf;*.avi;*.flv;*.m1v;*.m2v;*.m4v;*.mkv;*.mov;*.mpeg;*.mpg;*.ogg;*.ogv;*.rm;*.wmv|All files|*.*"
   
+  filename$ = OpenFileRequester("Select video for transcoding", "", pattern$, 0, #PB_Requester_MultiSelection)
+  While filename$
+    addJob(filename$)
+    filename$ = NextSelectedFileName()
+  Wend
 EndProcedure
 
 Procedure ButtonEdit(EventType)
@@ -527,7 +536,7 @@ Procedure Timer1sec()
   Protected elapsedTime.i, totalTime.d, remainingTime.i, i.i, weight.d, totalWeight.d
   #SIZE = 60
   Static Dim totalTime(#SIZE) ;total time values of last minute
-  Static *job ;save job ID!
+  Static *job.job ;save job ID!
   Static el
     
   If *CurrentJob
@@ -540,7 +549,7 @@ Procedure Timer1sec()
       el = 0
     EndIf
     
-    With *CurrentJob
+    With *job ; do not access *CurrentJob in MainLoop as it can be set to zero in ffmpeg thread
       elapsedTime = Date() - \startTime
       totalTime(el) = 0
       If \percent
@@ -621,7 +630,6 @@ Procedure TimerGUI_Update()
     DisableGadget(ButtonDelete, #True)
   EndIf
 EndProcedure
-
 
 Procedure updateGadgets()
   Static lastUpdate1 = 0
@@ -769,7 +777,7 @@ Repeat
 ForEver
 End
 ; IDE Options = PureBasic 5.30 (Windows - x64)
-; CursorPosition = 254
-; FirstLine = 98
-; Folding = AEA56
+; CursorPosition = 533
+; FirstLine = 46
+; Folding = AAAA5
 ; EnableXP

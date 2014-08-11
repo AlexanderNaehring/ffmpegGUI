@@ -7,7 +7,7 @@
   <section name="data">
     <explorer view="..\..\Documents\" pattern="0"/>
     <log show="1"/>
-    <lastopen date="2014-08-02 10:51" user="Alexander" host="ALEXANDER-TOWER"/>
+    <lastopen date="2014-08-04 11:02" user="Alexander" host="ALEXANDER-TOWER"/>
   </section>
   <section name="files">
     <file name="source\data.pbi">
@@ -16,7 +16,7 @@
     </file>
     <file name="source\main.pb">
       <config load="1" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
-      <fingerprint md5="23c02de3e8bf535caa7786c9f6c2b23d"/>
+      <fingerprint md5="599645e24468eebcc7c9aac654e0563c"/>
     </file>
     <file name="source\WindowMain.pbf">
       <config load="0" scan="1" panel="1" warn="1" lastopen="1" panelstate="++"/>
@@ -35,8 +35,8 @@
       <executable value="bin\win64\ffmpegGUI.exe"/>
       <options thread="1" xpskin="1" user="1" debug="1"/>
       <debugger custom="1" type="ide"/>
-      <compilecount enable="1" value="329"/>
-      <buildcount enable="1" value="19"/>
+      <compilecount enable="1" value="342"/>
+      <buildcount enable="1" value="20"/>
       <execonstant enable="1"/>
       <watchlist>*CurrentJob;&gt;Queue</watchlist>
     </target>
@@ -46,8 +46,8 @@
       <compiler version="PureBasic 5.22 LTS (Windows - x86)"/>
       <executable value="bin\win32\ffmpegGUI.exe"/>
       <options thread="1" xpskin="1" user="1" debug="1"/>
-      <compilecount enable="1" value="281"/>
-      <buildcount enable="1" value="19"/>
+      <compilecount enable="1" value="282"/>
+      <buildcount enable="1" value="20"/>
       <execonstant enable="1"/>
     </target>
   </section>

@@ -282,7 +282,7 @@ Procedure ffmpeg(*job.job)
         *job\durationSecondsTotal= getSeconds(out$)
       EndIf
       
-      If FindString(out$, "frame=")
+      If FindString(out$, "time=")
         sec$ = out$
         sec$ = Mid(sec$, FindString(sec$, "time=") + 5)
         sec$ = Left(sec$, FindString(sec$, ".")-1)
@@ -678,6 +678,8 @@ Procedure startNextJob()
     ProcedureReturn #True
   EndIf
   
+  CreateDirectory(GetPathPart(*CurrentJob\file\destination$))
+  
   ; "reset" Transcoding window before showing
   SetGadgetText(StringInput, *CurrentJob\file\source$)
   SetGadgetText(StringOutput, *CurrentJob\file\destination$)
@@ -737,14 +739,23 @@ Procedure updateQueueGadget(saveSelected = #False)
 EndProcedure
 
 Procedure addJob(source$)
+  Protected path$, file$
+  Protected extension$
+  
+  
+  path$ = GetPathPart(source$)
+  file$ = GetFilePart(source$)
+  file$ = Left(file$, Len(file$) - (Len(GetExtensionPart(file$))+1) )
+  extension$ = ".mkv"
+  
   LockMutex(mutexJobs)
   LastElement(jobs())
   AddElement(jobs())
   With jobs()
     \state = #STATE_WAITING
     \file\source$       = source$
-    \file\destination$  = source$+".mkv"
-    \durationTotal$ = ""
+    \file\destination$  = path$ + "transcoded\" + file$ + extension$ 
+;     \durationTotal$ = ?
   EndWith
   UnlockMutex(mutexJobs)
   updateQueueGadget()
@@ -777,7 +788,7 @@ Repeat
 ForEver
 End
 ; IDE Options = PureBasic 5.30 (Windows - x64)
-; CursorPosition = 533
-; FirstLine = 46
-; Folding = AAAA5
+; CursorPosition = 748
+; FirstLine = 219
+; Folding = AEAA9
 ; EnableXP
